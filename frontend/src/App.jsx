@@ -7,6 +7,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
 import Home from "./components/Home";
+import MyPolls from "./components/MyPolls";
+import PollDetail from "./components/PollDetail";
 import NotFound from "./components/NotFound";
 import { API_URL, SOCKETS_URL, NODE_ENV } from "./shared";
 import { io } from "socket.io-client";
@@ -65,6 +67,8 @@ const App = () => {
           <Route path="/login" element={<Login setUser={setUser} />} />
           <Route path="/signup" element={<Signup setUser={setUser} />} />
           <Route exact path="/" element={<Home />} />
+          <Route path="/my-polls" element={<MyPolls />} />
+          <Route path="/my-polls/:pollId" element={<PollDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
