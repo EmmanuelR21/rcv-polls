@@ -1,7 +1,0 @@
----
-alwaysApply: true
----
-
-You can run the application locally in two separate terminals. From /backend, `npm run start-dev` and from /frontend, `npm run start-dev`. These can also be terminated with Ctrl-C.
-
-After developing a new feature, re-run the application locally and confirm that the application boots up successfully, and the basic functionality still works as expected.
