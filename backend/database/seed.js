@@ -1,6 +1,6 @@
 const db = require("./db");
 const crypto = require("crypto");
-const { User, Poll } = require("./index");
+const { User, Poll, Ballot } = require("./index");
 
 const seed = async () => {
   try {
@@ -90,13 +90,50 @@ const seed = async () => {
         option3: "Hip Hop",
         option4: "Classical",
         option5: "Jazz",
-        status: "draft",
+        status: "ended",
         ownerId: users[2].id,
         shareableLink: crypto.randomBytes(8).toString("hex"),
       },
     ]);
 
     console.log(`📊 Created ${polls.length} polls`);
+
+    // Create some test ballots for the ended poll (Music genre preference)
+    const endedPoll = polls.find((poll) => poll.status === "ended");
+    if (endedPoll) {
+      const testBallots = await Ballot.bulkCreate([
+        // User votes for the ended music poll
+        {
+          pollId: endedPoll.id,
+          userId: users[0].id, // admin votes
+          firstChoice: 1, // Rock
+          secondChoice: 3, // Hip Hop
+          thirdChoice: 5, // Jazz
+          fourthChoice: 2, // Pop
+          fifthChoice: 4, // Classical
+        },
+        {
+          pollId: endedPoll.id,
+          userId: users[1].id, // user1 votes
+          firstChoice: 3, // Hip Hop
+          secondChoice: 1, // Rock
+          thirdChoice: 2, // Pop
+          fourthChoice: 5, // Jazz
+          fifthChoice: 4, // Classical
+        },
+        {
+          pollId: endedPoll.id,
+          userId: users[2].id, // user2 votes (poll owner - but we'll allow for testing)
+          firstChoice: 5, // Jazz
+          secondChoice: 4, // Classical
+          thirdChoice: 1, // Rock
+          fourthChoice: 2, // Pop
+          fifthChoice: 3, // Hip Hop
+        },
+      ]);
+
+      console.log(`🗳️ Created ${testBallots.length} test ballots`);
+    }
 
     console.log("🌱 Seeded the database");
   } catch (error) {

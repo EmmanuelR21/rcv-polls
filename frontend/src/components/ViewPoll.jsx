@@ -19,6 +19,8 @@ const ViewPoll = ({ user }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteMessage, setVoteMessage] = useState("");
+  const [results, setResults] = useState(null);
+  const [isLoadingResults, setIsLoadingResults] = useState(false);
 
   useEffect(() => {
     const fetchPoll = async () => {
@@ -27,6 +29,11 @@ const ViewPoll = ({ user }) => {
           `${API_URL}/api/polls/${shareableLink}`,
         );
         setPoll(response.data.poll);
+
+        // If poll is ended, fetch results
+        if (response.data.poll.status === "ended") {
+          await fetchResults();
+        }
       } catch (err) {
         console.error("Error fetching poll:", err);
         if (err.response?.status === 404) {
@@ -38,6 +45,20 @@ const ViewPoll = ({ user }) => {
         }
       } finally {
         setIsLoading(false);
+      }
+    };
+
+    const fetchResults = async () => {
+      setIsLoadingResults(true);
+      try {
+        const response = await axios.get(
+          `${API_URL}/api/polls/${shareableLink}/results`,
+        );
+        setResults(response.data.results);
+      } catch (err) {
+        console.error("Error fetching results:", err);
+      } finally {
+        setIsLoadingResults(false);
       }
     };
 
@@ -71,7 +92,8 @@ const ViewPoll = ({ user }) => {
     );
   }
 
-  const canVote = poll.status === "published" && !hasVoted && user;
+  const isOwner = user && poll && user.id === poll.ownerId;
+  const canVote = poll.status === "published" && !hasVoted && user && !isOwner;
 
   const pollOptions = poll
     ? [
@@ -169,37 +191,139 @@ const ViewPoll = ({ user }) => {
           </div>
         )}
 
-        <div className="poll-options-view">
-          <h2>Poll Options:</h2>
-          <div className="poll-options-list-view">
-            <div className="poll-option-item-view">
-              <div className="option-number-badge">1</div>
-              <div className="option-text">{poll.option1}</div>
-            </div>
-            <div className="poll-option-item-view">
-              <div className="option-number-badge">2</div>
-              <div className="option-text">{poll.option2}</div>
-            </div>
-            <div className="poll-option-item-view">
-              <div className="option-number-badge">3</div>
-              <div className="option-text">{poll.option3}</div>
-            </div>
-            <div className="poll-option-item-view">
-              <div className="option-number-badge">4</div>
-              <div className="option-text">{poll.option4}</div>
-            </div>
-            <div className="poll-option-item-view">
-              <div className="option-number-badge">5</div>
-              <div className="option-text">{poll.option5}</div>
+        {poll.status === "ended" ? (
+          <div className="results-view">
+            <h2>Poll Results</h2>
+            {isLoadingResults ? (
+              <p>Loading results...</p>
+            ) : results ? (
+              <div className="results-content">
+                {results.completed && results.winner ? (
+                  <div className="winner-announcement">
+                    <h3>🏆 Winner: {results.winnerText}</h3>
+                    <p>Total votes cast: {results.totalBallots}</p>
+                  </div>
+                ) : (
+                  <div className="no-results">
+                    <p>{results.message || "No results available"}</p>
+                  </div>
+                )}
+
+                {results.optionSummary && (
+                  <div className="results-breakdown">
+                    <h4>Vote Breakdown:</h4>
+                    <div className="options-results">
+                      {Object.values(results.optionSummary).map((option) => (
+                        <div
+                          key={option.optionNumber}
+                          className={`result-option ${
+                            option.isWinner ? "winner-option" : ""
+                          } ${
+                            option.eliminatedInRound ? "eliminated-option" : ""
+                          }`}
+                        >
+                          <div className="result-option-header">
+                            <div className="option-number-badge">
+                              {option.optionNumber}
+                            </div>
+                            <div className="option-text">{option.text}</div>
+                            {option.isWinner && (
+                              <div className="winner-badge">Winner</div>
+                            )}
+                          </div>
+                          <div className="option-stats">
+                            <div className="final-votes">
+                              Final votes: {option.finalVotes}
+                            </div>
+                            {option.eliminatedInRound && (
+                              <div className="elimination-info">
+                                Eliminated in round {option.eliminatedInRound}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {results.rounds && results.rounds.length > 0 && (
+                  <div className="rounds-breakdown">
+                    <h4>Round-by-Round Results:</h4>
+                    {results.rounds.map((round) => (
+                      <div key={round.round} className="round-result">
+                        <h5>Round {round.round}</h5>
+                        <div className="round-votes">
+                          {Object.entries(round.voteCounts).map(
+                            ([option, votes]) => {
+                              const optionText = poll[`option${option}`];
+                              return (
+                                <div key={option} className="round-vote-count">
+                                  {optionText}: {votes} votes
+                                </div>
+                              );
+                            },
+                          )}
+                        </div>
+                        {round.eliminated && (
+                          <p className="eliminated-text">
+                            Eliminated: {poll[`option${round.eliminated}`]}
+                          </p>
+                        )}
+                        {round.winner && (
+                          <p className="winner-text">
+                            Winner: {poll[`option${round.winner}`]}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p>Failed to load results</p>
+            )}
+          </div>
+        ) : (
+          <div className="poll-options-view">
+            <h2>Poll Options:</h2>
+            <div className="poll-options-list-view">
+              <div className="poll-option-item-view">
+                <div className="option-number-badge">1</div>
+                <div className="option-text">{poll.option1}</div>
+              </div>
+              <div className="poll-option-item-view">
+                <div className="option-number-badge">2</div>
+                <div className="option-text">{poll.option2}</div>
+              </div>
+              <div className="poll-option-item-view">
+                <div className="option-number-badge">3</div>
+                <div className="option-text">{poll.option3}</div>
+              </div>
+              <div className="poll-option-item-view">
+                <div className="option-number-badge">4</div>
+                <div className="option-text">{poll.option4}</div>
+              </div>
+              <div className="poll-option-item-view">
+                <div className="option-number-badge">5</div>
+                <div className="option-text">{poll.option5}</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {hasVoted ? (
           <div className="voting-section">
             <div className="vote-success">
               <p>✅ Thank you for voting!</p>
               <p>Your ranked choice ballot has been recorded.</p>
+            </div>
+          </div>
+        ) : poll?.status === "published" && isOwner ? (
+          <div className="voting-section">
+            <div className="owner-restriction">
+              <p>👤 You cannot vote on your own poll.</p>
+              <p>As the creator of this poll, you can only view the options.</p>
             </div>
           </div>
         ) : poll?.status === "published" && !user ? (

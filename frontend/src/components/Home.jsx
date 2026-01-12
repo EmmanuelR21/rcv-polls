@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "./HomeStyles.css";
 import { API_URL } from "../shared";
 
 const Home = ({ user }) => {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [polls, setPolls] = useState([]);
   const [publicPolls, setPublicPolls] = useState([]);
+
   const [isLoadingPolls, setIsLoadingPolls] = useState(false);
   const [isLoadingPublicPolls, setIsLoadingPublicPolls] = useState(false);
+
   const [pollOptions, setPollOptions] = useState({
     title: "",
     option1: "",
@@ -45,7 +49,8 @@ const Home = ({ user }) => {
       const response = await axios.get(`${API_URL}/api/polls/public`, {
         withCredentials: true,
       });
-      setPublicPolls(response.data.polls || []);
+      const allPublicPolls = response.data.polls || [];
+      setPublicPolls(allPublicPolls);
     } catch (error) {
       console.error("Error fetching public polls:", error);
       setPublicPolls([]);
@@ -159,6 +164,38 @@ const Home = ({ user }) => {
     }
   };
 
+  const handleEndPoll = async (shareableLink, event) => {
+    event.stopPropagation();
+
+    if (
+      !confirm(
+        "Are you sure you want to end this poll? This action cannot be undone and will make results available.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await axios.patch(
+        `${API_URL}/api/polls/${shareableLink}/end`,
+        {},
+        {
+          withCredentials: true,
+        },
+      );
+
+      // Refresh polls list to show updated status
+      fetchPolls();
+      fetchPublicPolls();
+      alert("Poll has been ended successfully!");
+    } catch (error) {
+      console.error("Error ending poll:", error);
+      alert(
+        error.response?.data?.error || "Failed to end poll. Please try again.",
+      );
+    }
+  };
+
   const handleCopyLink = (shareableLink) => {
     const pollUrl = `${window.location.origin}/poll/${shareableLink}`;
     navigator.clipboard
@@ -177,6 +214,10 @@ const Home = ({ user }) => {
         document.body.removeChild(textArea);
         alert("Link copied to clipboard!");
       });
+  };
+
+  const handlePollClick = (shareableLink) => {
+    navigate(`/poll/${shareableLink}`);
   };
 
   return (
@@ -198,12 +239,19 @@ const Home = ({ user }) => {
             ) : (
               <div className="polls-list">
                 {polls.map((poll) => (
-                  <div key={poll.id} className="poll-card user-poll">
+                  <div
+                    key={poll.id}
+                    className="poll-card user-poll clickable-poll"
+                    onClick={() => handlePollClick(poll.shareableLink)}
+                  >
                     <div className="poll-header">
                       <h3 className="poll-title">{poll.title}</h3>
                       <span className={`poll-status ${poll.status}`}>
                         {poll.status}
                       </span>
+                    </div>
+                    <div className="owner-indicator">
+                      <span className="owner-badge">👤 Your Poll</span>
                     </div>
                     <div className="poll-options-list">
                       <div className="poll-option-item">
@@ -229,19 +277,37 @@ const Home = ({ user }) => {
                     </div>
                     <div className="poll-share-section">
                       <div className="share-link-container">
-                        <input
-                          type="text"
-                          readOnly
-                          value={`${window.location.origin}/poll/${poll.shareableLink}`}
-                          className="share-link-input"
-                        />
-                        <button
-                          className="copy-link-btn"
-                          onClick={() => handleCopyLink(poll.shareableLink)}
-                          title="Copy link"
-                        >
-                          📋 Copy Link
-                        </button>
+                        <div className="share-link-row">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`${window.location.origin}/poll/${poll.shareableLink}`}
+                            className="share-link-input"
+                          />
+                        </div>
+                        <div className="share-buttons-row">
+                          <button
+                            className="copy-link-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyLink(poll.shareableLink, e);
+                            }}
+                            title="Copy link"
+                          >
+                            📋 Copy Link
+                          </button>
+                          {poll.status === "published" && (
+                            <button
+                              className="end-poll-btn"
+                              onClick={(e) =>
+                                handleEndPoll(poll.shareableLink, e)
+                              }
+                              title="End poll"
+                            >
+                              🏁 End Poll
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -258,53 +324,139 @@ const Home = ({ user }) => {
               <p className="no-polls">No public polls available.</p>
             ) : (
               <div className="polls-list">
-                {publicPolls.map((poll) => (
-                  <div key={poll.id} className="poll-card public-poll">
-                    <div className="poll-header">
-                      <h3 className="poll-title">{poll.title}</h3>
-                      <span className="poll-status published">Published</span>
+                {publicPolls
+                  .filter((poll) => poll.status === "published")
+                  .map((poll) => (
+                    <div
+                      key={poll.id}
+                      className="poll-card public-poll clickable-poll"
+                      onClick={() => handlePollClick(poll.shareableLink)}
+                    >
+                      <div className="poll-header">
+                        <h3 className="poll-title">{poll.title}</h3>
+                        <span className="poll-status published">Published</span>
+                      </div>
+                      <div className="poll-options-list">
+                        <div className="poll-option-item">
+                          <span className="option-number">1.</span>
+                          <span>{poll.option1}</span>
+                        </div>
+                        <div className="poll-option-item">
+                          <span className="option-number">2.</span>
+                          <span>{poll.option2}</span>
+                        </div>
+                        <div className="poll-option-item">
+                          <span className="option-number">3.</span>
+                          <span>{poll.option3}</span>
+                        </div>
+                        <div className="poll-option-item">
+                          <span className="option-number">4.</span>
+                          <span>{poll.option4}</span>
+                        </div>
+                        <div className="poll-option-item">
+                          <span className="option-number">5.</span>
+                          <span>{poll.option5}</span>
+                        </div>
+                      </div>
+                      <div className="poll-share-section">
+                        <div className="share-link-container">
+                          <div className="share-link-row">
+                            <input
+                              type="text"
+                              readOnly
+                              value={`${window.location.origin}/poll/${poll.shareableLink}`}
+                              className="share-link-input"
+                            />
+                          </div>
+                          <div className="share-buttons-row">
+                            <button
+                              className="copy-link-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyLink(poll.shareableLink, e);
+                              }}
+                              title="Copy link"
+                            >
+                              📋 Copy Link
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="poll-options-list">
-                      <div className="poll-option-item">
-                        <span className="option-number">1.</span>
-                        <span>{poll.option1}</span>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          <div className="polls-section ended-polls-section">
+            <h2>Ended Polls by Others</h2>
+            {isLoadingPublicPolls ? (
+              <p>Loading ended polls...</p>
+            ) : publicPolls.filter((poll) => poll.status === "ended").length ===
+              0 ? (
+              <p className="no-polls">No ended polls available.</p>
+            ) : (
+              <div className="polls-list">
+                {publicPolls
+                  .filter((poll) => poll.status === "ended")
+                  .map((poll) => (
+                    <div
+                      key={poll.id}
+                      className="poll-card ended-poll clickable-poll"
+                      onClick={() => handlePollClick(poll.shareableLink)}
+                    >
+                      <div className="poll-header">
+                        <h3 className="poll-title">{poll.title}</h3>
+                        <span className="poll-status ended">Ended</span>
                       </div>
-                      <div className="poll-option-item">
-                        <span className="option-number">2.</span>
-                        <span>{poll.option2}</span>
+                      <div className="poll-options-list">
+                        <div className="poll-option-item">
+                          <span className="option-number">1.</span>
+                          <span>{poll.option1}</span>
+                        </div>
+                        <div className="poll-option-item">
+                          <span className="option-number">2.</span>
+                          <span>{poll.option2}</span>
+                        </div>
+                        <div className="poll-option-item">
+                          <span className="option-number">3.</span>
+                          <span>{poll.option3}</span>
+                        </div>
+                        <div className="poll-option-item">
+                          <span className="option-number">4.</span>
+                          <span>{poll.option4}</span>
+                        </div>
+                        <div className="poll-option-item">
+                          <span className="option-number">5.</span>
+                          <span>{poll.option5}</span>
+                        </div>
                       </div>
-                      <div className="poll-option-item">
-                        <span className="option-number">3.</span>
-                        <span>{poll.option3}</span>
-                      </div>
-                      <div className="poll-option-item">
-                        <span className="option-number">4.</span>
-                        <span>{poll.option4}</span>
-                      </div>
-                      <div className="poll-option-item">
-                        <span className="option-number">5.</span>
-                        <span>{poll.option5}</span>
+                      <div className="poll-share-section">
+                        <div className="share-link-container">
+                          <div className="share-link-row">
+                            <input
+                              type="text"
+                              readOnly
+                              value={`${window.location.origin}/poll/${poll.shareableLink}`}
+                              className="share-link-input"
+                            />
+                          </div>
+                          <div className="share-buttons-row">
+                            <button
+                              className="copy-link-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyLink(poll.shareableLink, e);
+                              }}
+                              title="Copy link"
+                            >
+                              📋 Copy Link
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="poll-share-section">
-                      <div className="share-link-container">
-                        <input
-                          type="text"
-                          readOnly
-                          value={`${window.location.origin}/poll/${poll.shareableLink}`}
-                          className="share-link-input"
-                        />
-                        <button
-                          className="copy-link-btn"
-                          onClick={() => handleCopyLink(poll.shareableLink)}
-                          title="Copy link"
-                        >
-                          📋 Copy Link
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>

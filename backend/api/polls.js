@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const { Op } = require("sequelize");
 const { Poll, Ballot } = require("../database");
 const { authenticateJWT } = require("../auth");
+const { calculateRCVResults } = require("../utils/rcvCalculator");
 
 // Get all polls for the current logged-in user
 router.get("/", authenticateJWT, async (req, res) => {
@@ -21,13 +22,13 @@ router.get("/", authenticateJWT, async (req, res) => {
   }
 });
 
-// Get all published polls by other users
+// Get all published and ended polls by other users
 router.get("/public", authenticateJWT, async (req, res) => {
   try {
     const userId = req.user.id;
     const polls = await Poll.findAll({
       where: {
-        status: "published",
+        status: { [Op.in]: ["published", "ended"] },
         ownerId: { [Op.ne]: userId },
       },
       order: [["createdAt", "DESC"]],
@@ -207,6 +208,131 @@ router.post("/:shareableLink/vote", authenticateJWT, async (req, res) => {
   } catch (error) {
     console.error("Error submitting ballot:", error);
     res.status(500).send({ error: "Failed to submit vote" });
+  }
+});
+
+// Get poll results (RCV calculation) - only for ended polls
+router.get("/:shareableLink/results", async (req, res) => {
+  try {
+    const { shareableLink } = req.params;
+
+    if (!shareableLink) {
+      return res.status(400).send({ error: "Shareable link is required" });
+    }
+
+    // Get the poll
+    const poll = await Poll.findOne({
+      where: { shareableLink },
+    });
+
+    if (!poll) {
+      return res.status(404).send({ error: "Poll not found" });
+    }
+
+    // Only show results for ended polls
+    if (poll.status !== "ended") {
+      return res.status(400).send({
+        error: "Results are only available for ended polls",
+      });
+    }
+
+    // Get all ballots for this poll
+    const ballots = await Ballot.findAll({
+      where: { pollId: poll.id },
+      order: [["createdAt", "ASC"]],
+    });
+
+    // If no ballots, return empty results
+    if (ballots.length === 0) {
+      return res.send({
+        poll: {
+          id: poll.id,
+          title: poll.title,
+          status: poll.status,
+          option1: poll.option1,
+          option2: poll.option2,
+          option3: poll.option3,
+          option4: poll.option4,
+          option5: poll.option5,
+        },
+        results: {
+          winner: null,
+          winnerText: null,
+          totalBallots: 0,
+          rounds: [],
+          optionSummary: {},
+          completed: false,
+          message: "No votes were cast for this poll",
+        },
+      });
+    }
+
+    // Calculate RCV results
+    const results = calculateRCVResults(ballots, poll);
+
+    res.send({
+      poll: {
+        id: poll.id,
+        title: poll.title,
+        status: poll.status,
+        option1: poll.option1,
+        option2: poll.option2,
+        option3: poll.option3,
+        option4: poll.option4,
+        option5: poll.option5,
+      },
+      results,
+    });
+  } catch (error) {
+    console.error("Error calculating poll results:", error);
+    res.status(500).send({
+      error: "Failed to calculate poll results",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+});
+
+// Endpoint to manually end a poll (for testing/admin purposes)
+router.patch("/:shareableLink/end", authenticateJWT, async (req, res) => {
+  try {
+    const { shareableLink } = req.params;
+    const userId = req.user.id;
+
+    if (!shareableLink) {
+      return res.status(400).send({ error: "Shareable link is required" });
+    }
+
+    const poll = await Poll.findOne({
+      where: { shareableLink },
+    });
+
+    if (!poll) {
+      return res.status(404).send({ error: "Poll not found" });
+    }
+
+    // Only poll owner can end their poll
+    if (poll.ownerId !== userId) {
+      return res
+        .status(403)
+        .send({ error: "Only poll owner can end the poll" });
+    }
+
+    // Update poll status to ended
+    await poll.update({ status: "ended" });
+
+    res.send({
+      message: "Poll ended successfully",
+      poll: {
+        id: poll.id,
+        title: poll.title,
+        status: poll.status,
+        shareableLink: poll.shareableLink,
+      },
+    });
+  } catch (error) {
+    console.error("Error ending poll:", error);
+    res.status(500).send({ error: "Failed to end poll" });
   }
 });
 

@@ -212,6 +212,16 @@
     transition: box-shadow 0.2s;
 }
 
+.poll-card.clickable-poll {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.poll-card.clickable-poll:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
 .poll-card.user-poll {
     border-left: 4px solid #007bff;
 }
@@ -219,6 +229,16 @@
 .poll-card.public-poll {
     border-left: 4px solid #28a745;
     background: #f8fff9;
+}
+
+.poll-card.ended-poll {
+    border-left: 4px solid #6c757d;
+    background: #f8f9fa;
+    opacity: 0.85;
+}
+
+.poll-card.ended-poll:hover {
+    opacity: 1;
 }
 
 .poll-card:hover {
@@ -233,6 +253,33 @@
     padding-bottom: 0.75rem;
     border-bottom: 1px solid #eee;
     gap: 1rem;
+}
+
+.owner-indicator {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.owner-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #e7f3ff;
+    color: #0c5460;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: 1px solid #bee5eb;
+}
+
+.ended-polls-section {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e9ecef;
+}
+
+.ended-polls-section h2 {
+    color: #6c757d;
 }
 
 .poll-title {
@@ -299,8 +346,24 @@
 
 .share-link-container {
     display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.share-link-row {
+    display: flex;
     gap: 0.5rem;
     align-items: center;
+}
+
+.share-buttons-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: flex-end;
+    max-width: 300px;
+    margin-left: auto;
 }
 
 .share-link-input {
@@ -315,18 +378,39 @@
 }
 
 .copy-link-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.875rem;
     background-color: #28a745;
     color: white;
     border: none;
     border-radius: 4px;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.2s;
     white-space: nowrap;
+    flex: 1;
+    max-width: 120px;
 }
 
 .copy-link-btn:hover {
     background-color: #218838;
+}
+
+.end-poll-btn {
+    padding: 0.5rem 0.875rem;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    flex: 1;
+    max-width: 120px;
+}
+
+.end-poll-btn:hover {
+    background-color: #c82333;
 }
