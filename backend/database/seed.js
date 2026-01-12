@@ -1,5 +1,5 @@
 const db = require("./db");
-const { User } = require("./index");
+const { User, Poll } = require("./index");
 
 const seed = async () => {
   try {
@@ -14,8 +14,29 @@ const seed = async () => {
 
     console.log(`👤 Created ${users.length} users`);
 
-    // Create more seed data here once you've created your models
-    // Seed files are a great way to test your database schema!
+    // Create some example polls
+    const polls = await Poll.bulkCreate([
+      {
+        option1: "Option A",
+        option2: "Option B",
+        option3: "Option C",
+        option4: "Option D",
+        option5: "Option E",
+        status: "published",
+        ownerId: users[0].id,
+      },
+      {
+        option1: "Red",
+        option2: "Blue",
+        option3: "Green",
+        option4: "Yellow",
+        option5: "Purple",
+        status: "draft",
+        ownerId: users[1].id,
+      },
+    ]);
+
+    console.log(`📊 Created ${polls.length} polls`);
 
     console.log("🌱 Seeded the database");
   } catch (error) {
