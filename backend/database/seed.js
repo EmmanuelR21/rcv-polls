@@ -1,4 +1,5 @@
 const db = require("./db");
+const crypto = require("crypto");
 const { User, Poll } = require("./index");
 
 const seed = async () => {
@@ -24,6 +25,7 @@ const seed = async () => {
         option5: "Option E",
         status: "published",
         ownerId: users[0].id,
+        shareableLink: crypto.randomBytes(8).toString("hex"),
       },
       {
         option1: "Red",
@@ -33,6 +35,7 @@ const seed = async () => {
         option5: "Purple",
         status: "draft",
         ownerId: users[1].id,
+        shareableLink: crypto.randomBytes(8).toString("hex"),
       },
     ]);
 

@@ -23,8 +23,6 @@ const initSocketServer = (server) => {
       socket.on("disconnect", () => {
         console.log(`🔗 User ${socket.id} disconnected from sockets`);
       });
-
-      // Define event handlers here...
     });
   } catch (error) {
     console.error("❌ Error initializing socket server:");

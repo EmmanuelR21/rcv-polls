@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("crypto");
 const { Poll } = require("../database");
 const { authenticateJWT } = require("../auth");
 
@@ -38,6 +39,17 @@ router.post("/", authenticateJWT, async (req, res) => {
       return res.status(400).send({ error: "Invalid poll status" });
     }
 
+    // Generate unique shareable link
+    let shareableLink;
+    let isUnique = false;
+    while (!isUnique) {
+      shareableLink = crypto.randomBytes(8).toString("hex");
+      const existingPoll = await Poll.findOne({ where: { shareableLink } });
+      if (!existingPoll) {
+        isUnique = true;
+      }
+    }
+
     const poll = await Poll.create({
       option1,
       option2,
@@ -46,12 +58,40 @@ router.post("/", authenticateJWT, async (req, res) => {
       option5,
       status: validStatus,
       ownerId: userId,
+      shareableLink,
     });
 
     res.status(201).send({ poll });
   } catch (error) {
     console.error("Error creating poll:", error);
     res.status(500).send({ error: "Failed to create poll" });
+  }
+});
+
+// Get a poll by shareable link (public endpoint, no auth required)
+router.get("/:shareableLink", async (req, res) => {
+  try {
+    const { shareableLink } = req.params;
+    
+    if (!shareableLink) {
+      return res.status(400).send({ error: "Shareable link is required" });
+    }
+
+    const poll = await Poll.findOne({
+      where: { shareableLink },
+    });
+
+    if (!poll) {
+      return res.status(404).send({ error: "Poll not found" });
+    }
+
+    res.send({ poll });
+  } catch (error) {
+    console.error("Error fetching poll by link:", error);
+    res.status(500).send({ 
+      error: "Failed to fetch poll",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
   }
 });
 

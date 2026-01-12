@@ -131,6 +131,26 @@ const Home = ({ user }) => {
     }
   };
 
+  const handleCopyLink = (shareableLink) => {
+    const pollUrl = `${window.location.origin}/poll/${shareableLink}`;
+    navigator.clipboard
+      .writeText(pollUrl)
+      .then(() => {
+        alert("Link copied to clipboard!");
+      })
+      .catch((err) => {
+        console.error("Failed to copy link:", err);
+        // Fallback: select the text
+        const textArea = document.createElement("textarea");
+        textArea.value = pollUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        alert("Link copied to clipboard!");
+      });
+  };
+
   return (
     <div className="home">
       <h1>Welcome to the TTP Winter Frontend!</h1>
@@ -176,6 +196,23 @@ const Home = ({ user }) => {
                       <div className="poll-option-item">
                         <span className="option-number">5.</span>
                         <span>{poll.option5}</span>
+                      </div>
+                    </div>
+                    <div className="poll-share-section">
+                      <div className="share-link-container">
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${window.location.origin}/poll/${poll.shareableLink}`}
+                          className="share-link-input"
+                        />
+                        <button
+                          className="copy-link-btn"
+                          onClick={() => handleCopyLink(poll.shareableLink)}
+                          title="Copy link"
+                        >
+                          📋 Copy Link
+                        </button>
                       </div>
                     </div>
                   </div>

@@ -39,8 +39,36 @@ app.use((err, req, res, next) => {
 
 const runApp = async () => {
   try {
-    await db.sync();
+    await db.sync({ alter: true }); // This will add missing columns like shareableLink
     console.log("✅ Connected to the database");
+    
+    // Generate shareableLinks for existing polls that don't have one
+    const { Poll } = require("./database");
+    const crypto = require("crypto");
+    const pollsWithoutLink = await Poll.findAll({
+      where: {
+        shareableLink: null,
+      },
+    });
+    
+    if (pollsWithoutLink.length > 0) {
+      console.log(`📝 Generating shareableLinks for ${pollsWithoutLink.length} existing polls...`);
+      for (const poll of pollsWithoutLink) {
+        let shareableLink;
+        let isUnique = false;
+        while (!isUnique) {
+          shareableLink = crypto.randomBytes(8).toString("hex");
+          const existingPoll = await Poll.findOne({ where: { shareableLink } });
+          if (!existingPoll) {
+            isUnique = true;
+          }
+        }
+        poll.shareableLink = shareableLink;
+        await poll.save();
+      }
+      console.log("✅ ShareableLinks generated");
+    }
+    
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
     });

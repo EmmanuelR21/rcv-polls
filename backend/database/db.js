@@ -2,7 +2,6 @@ require("dotenv").config();
 const { Sequelize } = require("sequelize");
 const pg = require("pg");
 
-// Feel free to rename the database to whatever you want!
 const dbName = "ttp_winter";
 
 const db = new Sequelize(

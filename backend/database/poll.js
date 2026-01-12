@@ -35,6 +35,11 @@ const Poll = db.define("poll", {
       key: "id",
     },
   },
+  shareableLink: {
+    type: DataTypes.STRING,
+    allowNull: true, // Temporarily nullable to allow schema update
+    unique: true,
+  },
 });
 
 module.exports = Poll;
