@@ -2,6 +2,10 @@ const { DataTypes } = require("sequelize");
 const db = require("./db");
 
 const Poll = db.define("poll", {
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
   option1: {
     type: DataTypes.STRING,
     allowNull: false,

@@ -50,7 +50,7 @@ const App = () => {
         {},
         {
           withCredentials: true,
-        }
+        },
       );
       setUser(null);
     } catch (error) {
@@ -66,7 +66,10 @@ const App = () => {
           <Route path="/login" element={<Login setUser={setUser} />} />
           <Route path="/signup" element={<Signup setUser={setUser} />} />
           <Route exact path="/" element={<Home user={user} />} />
-          <Route path="/poll/:shareableLink" element={<ViewPoll />} />
+          <Route
+            path="/poll/:shareableLink"
+            element={<ViewPoll user={user} />}
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

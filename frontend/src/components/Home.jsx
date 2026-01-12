@@ -6,8 +6,11 @@ import { API_URL } from "../shared";
 const Home = ({ user }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [polls, setPolls] = useState([]);
+  const [publicPolls, setPublicPolls] = useState([]);
   const [isLoadingPolls, setIsLoadingPolls] = useState(false);
+  const [isLoadingPublicPolls, setIsLoadingPublicPolls] = useState(false);
   const [pollOptions, setPollOptions] = useState({
+    title: "",
     option1: "",
     option2: "",
     option3: "",
@@ -33,9 +36,28 @@ const Home = ({ user }) => {
     }
   }, [user]);
 
+  // Fetch public polls by other users
+  const fetchPublicPolls = useCallback(async () => {
+    if (!user) return;
+
+    setIsLoadingPublicPolls(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/polls/public`, {
+        withCredentials: true,
+      });
+      setPublicPolls(response.data.polls || []);
+    } catch (error) {
+      console.error("Error fetching public polls:", error);
+      setPublicPolls([]);
+    } finally {
+      setIsLoadingPublicPolls(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     fetchPolls();
-  }, [fetchPolls]);
+    fetchPublicPolls();
+  }, [fetchPolls, fetchPublicPolls]);
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -45,6 +67,7 @@ const Home = ({ user }) => {
     setIsModalOpen(false);
     // Reset form when closing
     setPollOptions({
+      title: "",
       option1: "",
       option2: "",
       option3: "",
@@ -62,15 +85,16 @@ const Home = ({ user }) => {
   };
 
   const handlePublishPoll = async () => {
-    // Validate that all options are filled
+    // Validate that title and all options are filled
     if (
+      !pollOptions.title ||
       !pollOptions.option1 ||
       !pollOptions.option2 ||
       !pollOptions.option3 ||
       !pollOptions.option4 ||
       !pollOptions.option5
     ) {
-      alert("Please fill in all 5 poll options");
+      alert("Please fill in the title and all 5 poll options");
       return;
     }
 
@@ -83,29 +107,32 @@ const Home = ({ user }) => {
         },
         {
           withCredentials: true,
-        }
+        },
       );
       handleCloseModal();
       // Refresh polls list
       fetchPolls();
+      fetchPublicPolls();
     } catch (error) {
       console.error("Error creating poll:", error);
       alert(
-        error.response?.data?.error || "Failed to create poll. Please try again."
+        error.response?.data?.error ||
+          "Failed to create poll. Please try again.",
       );
     }
   };
 
   const handleSaveForLater = async () => {
-    // Validate that all options are filled
+    // Validate that title and all options are filled
     if (
+      !pollOptions.title ||
       !pollOptions.option1 ||
       !pollOptions.option2 ||
       !pollOptions.option3 ||
       !pollOptions.option4 ||
       !pollOptions.option5
     ) {
-      alert("Please fill in all 5 poll options");
+      alert("Please fill in the title and all 5 poll options");
       return;
     }
 
@@ -118,15 +145,16 @@ const Home = ({ user }) => {
         },
         {
           withCredentials: true,
-        }
+        },
       );
       handleCloseModal();
       // Refresh polls list
       fetchPolls();
+      fetchPublicPolls();
     } catch (error) {
       console.error("Error saving poll:", error);
       alert(
-        error.response?.data?.error || "Failed to save poll. Please try again."
+        error.response?.data?.error || "Failed to save poll. Please try again.",
       );
     }
   };
@@ -170,11 +198,71 @@ const Home = ({ user }) => {
             ) : (
               <div className="polls-list">
                 {polls.map((poll) => (
-                  <div key={poll.id} className="poll-card">
+                  <div key={poll.id} className="poll-card user-poll">
                     <div className="poll-header">
+                      <h3 className="poll-title">{poll.title}</h3>
                       <span className={`poll-status ${poll.status}`}>
                         {poll.status}
                       </span>
+                    </div>
+                    <div className="poll-options-list">
+                      <div className="poll-option-item">
+                        <span className="option-number">1.</span>
+                        <span>{poll.option1}</span>
+                      </div>
+                      <div className="poll-option-item">
+                        <span className="option-number">2.</span>
+                        <span>{poll.option2}</span>
+                      </div>
+                      <div className="poll-option-item">
+                        <span className="option-number">3.</span>
+                        <span>{poll.option3}</span>
+                      </div>
+                      <div className="poll-option-item">
+                        <span className="option-number">4.</span>
+                        <span>{poll.option4}</span>
+                      </div>
+                      <div className="poll-option-item">
+                        <span className="option-number">5.</span>
+                        <span>{poll.option5}</span>
+                      </div>
+                    </div>
+                    <div className="poll-share-section">
+                      <div className="share-link-container">
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${window.location.origin}/poll/${poll.shareableLink}`}
+                          className="share-link-input"
+                        />
+                        <button
+                          className="copy-link-btn"
+                          onClick={() => handleCopyLink(poll.shareableLink)}
+                          title="Copy link"
+                        >
+                          📋 Copy Link
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="polls-section public-polls-section">
+            <h2>Published Polls by Others</h2>
+            {isLoadingPublicPolls ? (
+              <p>Loading public polls...</p>
+            ) : publicPolls.length === 0 ? (
+              <p className="no-polls">No public polls available.</p>
+            ) : (
+              <div className="polls-list">
+                {publicPolls.map((poll) => (
+                  <div key={poll.id} className="poll-card public-poll">
+                    <div className="poll-header">
+                      <h3 className="poll-title">{poll.title}</h3>
+                      <span className="poll-status published">Published</span>
                     </div>
                     <div className="poll-options-list">
                       <div className="poll-option-item">
@@ -234,14 +322,28 @@ const Home = ({ user }) => {
                 ×
               </button>
             </div>
-            
+
             <div className="modal-body">
               <div className="poll-options">
+                <div className="poll-option-group">
+                  <label htmlFor="pollTitle">Poll Title:</label>
+                  <input
+                    type="text"
+                    id="pollTitle"
+                    value={pollOptions.title}
+                    onChange={(e) =>
+                      setPollOptions((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    placeholder="Enter poll title"
+                    className="poll-option-input"
+                  />
+                </div>
                 {[1, 2, 3, 4, 5].map((num) => (
                   <div key={num} className="poll-option-group">
-                    <label htmlFor={`option${num}`}>
-                      Option {num}:
-                    </label>
+                    <label htmlFor={`option${num}`}>Option {num}:</label>
                     <input
                       type="text"
                       id={`option${num}`}
@@ -256,16 +358,10 @@ const Home = ({ user }) => {
             </div>
 
             <div className="modal-footer">
-              <button
-                className="publish-btn"
-                onClick={handlePublishPoll}
-              >
+              <button className="publish-btn" onClick={handlePublishPoll}>
                 Publish Poll
               </button>
-              <button
-                className="save-later-btn"
-                onClick={handleSaveForLater}
-              >
+              <button className="save-later-btn" onClick={handleSaveForLater}>
                 Save for Later
               </button>
             </div>
